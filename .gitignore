@@ -1,0 +1,10 @@
+node_modules/
+out/
+dist/
+.vscode-test/
+.DS_Store
+/.construct-clipboard
+temp/
+docs/review-findings.md
+.antigravitycli/
+.pi/

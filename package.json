@@ -1,0 +1,161 @@
+{
+  "name": "and-then-next-suggestion",
+  "displayName": "And Then Next Suggestion",
+  "description": "Model-agnostic tab autocomplete for VS Code",
+  "version": "1.0.0",
+  "publisher": "ActitudStudio",
+  "author": "EstebanForge",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/EstebanForge/and-then-next-suggestion.git"
+  },
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Programming Languages",
+    "Machine Learning"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "andThenNextSuggestion.trigger",
+        "title": "And Then Next Suggestion: Trigger Suggestion"
+      },
+      {
+        "command": "andThenNextSuggestion.openSettings",
+        "title": "And Then Next Suggestion: Open Settings"
+      },
+      {
+        "command": "andThenNextSuggestion.setApiKey",
+        "title": "And Then Next Suggestion: Set API Key"
+      },
+      {
+        "command": "andThenNextSuggestion.showLogs",
+        "title": "And Then Next Suggestion: Show Extension Logs"
+      },
+      {
+        "command": "andThenNextSuggestion.switchProvider",
+        "title": "And Then Next Suggestion: Switch Provider Profile"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "andThenNextSuggestion.trigger",
+        "key": "alt+\\",
+        "when": "editorTextFocus"
+      }
+    ],
+    "configuration": {
+      "title": "And Then Next Suggestion",
+      "properties": {
+        "andThenNextSuggestion.activeProfile": {
+          "type": "string",
+          "default": "default",
+          "description": "The ID of the currently active provider profile."
+        },
+        "andThenNextSuggestion.requestTimeout": {
+          "type": "number",
+          "default": 10,
+          "description": "Maximum time (in seconds) to wait for a completion response before aborting.",
+          "minimum": 1,
+          "maximum": 120
+        },
+        "andThenNextSuggestion.profiles": {
+          "type": "array",
+          "description": "List of provider profiles.",
+          "default": [
+            {
+              "id": "default",
+              "name": "OpenAI Default",
+              "endpoint": "https://api.openai.com/v1/chat/completions",
+              "provider": "openai",
+              "apiType": "openai",
+              "model": "gpt-3.5-turbo",
+              "maxTokens": 500,
+              "temperature": 0.2
+            }
+          ],
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "description": "Unique ID for the profile."
+              },
+              "name": {
+                "type": "string",
+                "description": "Display name for the profile."
+              },
+              "endpoint": {
+                "type": "string"
+              },
+              "apiKey": {
+                "type": "string",
+                "description": "Optional API Key (prefers SecretStorage)."
+              },
+              "apiType": {
+                "type": "string",
+                "enum": [
+                  "openai",
+                  "anthropic",
+                  "ollama",
+                  "custom"
+                ]
+              },
+              "model": {
+                "type": "string"
+              },
+              "maxTokens": {
+                "type": "integer"
+              },
+              "temperature": {
+                "type": "number"
+              },
+              "disableThinking": {
+                "type": "boolean",
+                "default": true,
+                "description": "Disable 'thinking' or 'reasoning' for models that support it (e.g., DeepSeek R1)."
+              },
+              "supportsThinking": {
+                "type": "boolean",
+                "description": "Whether this model supports 'thinking' or 'reasoning' params (e.g., o1, o3, deepseek-reasoner). Leave unset to auto-detect by model name."
+              },
+              "customBody": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "endpoint",
+              "apiType"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "vitest run",
+    "package": "vsce package --out dist/"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/vscode": "^1.80.0",
+    "@vscode/vsce": "^2.19.0",
+    "typescript": "^5.0.0",
+    "vitest": "^4.1.6"
+  },
+  "dependencies": {
+    "@rolldown/binding-linux-arm64-gnu": "^1.0.1"
+  }
+}
