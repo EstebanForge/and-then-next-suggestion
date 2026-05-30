@@ -52,3 +52,7 @@ The extension resolves API keys in this order:
   "temperature": {{temperature}}
 }
 ```
+
+## License
+
+MIT License. See [LICENSE](LICENSE) for details.

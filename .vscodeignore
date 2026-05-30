@@ -15,3 +15,4 @@ temp/**
 vitest.config.*
 .antigravitycli/**
 .pi/**
+.codegraph/**

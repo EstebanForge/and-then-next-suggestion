@@ -55,11 +55,13 @@
       "title": "And Then Next Suggestion",
       "properties": {
         "andThenNextSuggestion.activeProfile": {
+          "order": 1,
           "type": "string",
-          "default": "default",
-          "description": "The ID of the currently active provider profile."
+          "default": "deepseek-v4-flash",
+          "markdownDescription": "The ID of the currently active provider profile. [Click here to select a profile from the dropdown](command:andThenNextSuggestion.switchProvider)."
         },
         "andThenNextSuggestion.requestTimeout": {
+          "order": 4,
           "type": "number",
           "default": 10,
           "description": "Maximum time (in seconds) to wait for a completion response before aborting.",
@@ -67,18 +69,39 @@
           "maximum": 120
         },
         "andThenNextSuggestion.profiles": {
+          "order": 2,
           "type": "array",
-          "description": "List of provider profiles.",
+          "markdownDescription": "List of provider profiles. [Manage Profiles](command:andThenNextSuggestion.manageProfiles)",
           "default": [
             {
-              "id": "default",
-              "name": "OpenAI Default",
-              "endpoint": "https://api.openai.com/v1/chat/completions",
-              "provider": "openai",
+              "id": "deepseek-v4-flash",
+              "name": "DeepSeek v4 Flash",
+              "endpoint": "https://api.deepseek.com/v1/chat/completions",
+              "provider": "deepseek",
               "apiType": "openai",
-              "model": "gpt-3.5-turbo",
-              "maxTokens": 500,
-              "temperature": 0.2
+              "model": "deepseek-v4-flash",
+              "maxTokens": 4000,
+              "temperature": 0.1
+            },
+            {
+              "id": "opencode-ds4flash",
+              "name": "OpenCode Go",
+              "endpoint": "https://opencode.ai/zen/go/v1/chat/completions",
+              "provider": "opencode",
+              "apiType": "openai",
+              "model": "deepseek-v4-flash",
+              "maxTokens": 4000,
+              "temperature": 0.1
+            },
+            {
+              "id": "minimax-m2.7",
+              "name": "MiniMax",
+              "endpoint": "https://api.minimax.io/v1/chat/completions",
+              "provider": "minimax",
+              "apiType": "openai",
+              "model": "minimax-m2.7",
+              "maxTokens": 4000,
+              "temperature": 0.1
             }
           ],
           "items": {
@@ -137,13 +160,19 @@
               "apiType"
             ]
           }
+        },
+        "andThenNextSuggestion.disableCopilotAutocomplete": {
+          "order": 3,
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Disable GitHub Copilot's tab autocomplete (inline suggestions) to prevent conflicts with other tab completion models. This keeps Copilot Chat and other features enabled. [Configure Copilot settings manually](command:workbench.action.openSettings?%5B%22github.copilot.inlineSuggest.enable%22%5D)"
         }
       }
     }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
+    "compile": "tsc -p ./ && node -e \"require('fs').cpSync('node_modules/@vscode-elements/elements/dist/bundled.js','media/vscode-elements-bundled.js')\"",
     "watch": "tsc -watch -p ./",
     "test": "vitest run",
     "package": "vsce package --out dist/"
@@ -151,11 +180,11 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/vscode": "^1.80.0",
-    "@vscode/vsce": "^2.19.0",
+    "@vscode/vsce": "^3.9.1",
     "typescript": "^5.0.0",
     "vitest": "^4.1.6"
   },
   "dependencies": {
-    "@rolldown/binding-linux-arm64-gnu": "^1.0.1"
+    "@vscode-elements/elements": "^2.5.1"
   }
 }

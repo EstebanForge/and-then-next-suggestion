@@ -26,8 +26,13 @@ All notable changes to the "and-then-next-suggestion" extension will be document
 - **Document Lifecycle Cleanup**: Per-document state (debounce timers, abort controllers) is cleaned up when documents close.
 - **MIT License**: Open-source under MIT license.
 - **Vitest Unit Tests**: 33 tests across 4 test files covering all dialect request preparation, response parsing, prefix/suffix overlap stripping, thinking block removal, FIM format detection, custom template substitution, file extension handling, and edge cases.
+- **Copilot Autocomplete Conflict Resolution**: Added `andThenNextSuggestion.disableCopilotAutocomplete` setting (enabled by default) to dynamically disable GitHub Copilot ghost text completions, auto completions, and next edit suggestions while maintaining Copilot Chat. Resilient and error-free when GitHub Copilot is not installed.
+- **Ultra-Compact Status Bar**: Displays compact state-only icons (`$(zap)`, `$(sync~spin)`, `$(error)`) to save screen space, while keeping detailed model profile information and error details in the hover tooltip.
+- **Interactive Active Profile Selector**: Replaced the `activeProfile` plain-text setting description with a Markdown link that instantly triggers the interactive profile selector QuickPick dropdown.
+- **Secure Key Management Guide**: Added a styled, secure credentials warning panel in the profile manager webview screen detailing fallback environment variables and VS Code enclave key storage commands.
 
 ### Fixed
 - **Thinking Parameter Conflict**: Omits `reasoning_effort` when `thinking` is disabled to avoid API rejection from conflicting parameters.
 - **DeepSeek Reasoning Suppression**: Uses `thinking: { type: 'disabled' }` for reasoning-capable models, aligned with official API behavior.
+- **Cross-Platform Building**: Removed the hardcoded Linux-only Rolldown binary dependency from devDependencies, resolving `EBADPLATFORM` installation errors on macOS (Darwin) and other environments.
 <!-- RELEASE:END 1.0.0 -->

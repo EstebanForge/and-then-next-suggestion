@@ -8,3 +8,5 @@ temp/
 docs/review-findings.md
 .antigravitycli/
 .pi/
+media/vscode-elements-bundled.js
+docs/autocomplete-extensions-analysis.md
