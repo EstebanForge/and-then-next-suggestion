@@ -2,6 +2,34 @@
 
 All notable changes to the "and-then-next-suggestion" extension will be documented in this file.
 
+<!-- RELEASE:START unreleased -->
+## [Unreleased]
+
+### Added
+- **Explain Command**: Select code and run "Explain Selected Code" (`Ctrl+Alt+E` / `Cmd+Alt+E`) to get a syntax-highlighted explanation in a webview panel. Uses a separate chat-style request pathway (`src/explain.ts`) with a compile-time exhaustive switch ensuring every `apiType` is handled.
+- **Prism Syntax Highlighting**: Explain webview renders code with locally-bundled Prism (30 component files, ~150KB, ships in `.vsix`). No CDN, no remote fetches. Nonce-gated CSP (`default-src 'none'`). Includes a packaging-integrity test that asserts every mapped component file ships.
+- **Response Cache**: Bounded LRU cache (50 entries, 5-min TTL) keyed by profile + prefix + suffix. Identical context returns instantly without an API call. Cache hits skip the status bar entirely (no flicker).
+- **Per-HTTP-Status Error Messages**: `src/statusMessages.ts` maps 400/401/402/403/404/408/422/429/5xx to actionable user-facing messages, surfaced in the status bar tooltip.
+- **Rate-Limit Floor** (`andThenNextSuggestion.rateLimitMs`, default `0` = disabled): Optional hard minimum between any two API requests, shared across inline completion and Explain. Uses synchronous slot reservation to prevent the concurrent-caller race.
+- **Configurable Debounce** (`andThenNextSuggestion.debounceMs`, default `200`): Was hardcoded 300ms. Now tunable per-user with documented lower/higher tradeoffs.
+- **API Key Cache**: In-memory cache avoids OS keychain round-trip (20-150ms) per request. Keyless providers (Ollama) cache an empty-string sentinel. Invalidated on `setApiKey`, `onDidChangeConfiguration`, and `secrets.onDidChange`.
+
+### Changed
+- **Debounce Default**: Reduced from 300ms to 200ms (configurable). Safe at 200 due to cache + abort + optional rate-floor safeguards.
+- **Sanitize Overlap Cap**: `sanitize()` prefix/suffix overlap scan capped at 300 chars (was O(n²) over the full 2000-char window). Models never verbatim-repeat more than ~300 chars.
+- **Logging**: Non-error `console.log` removed from the hot path (was crossing IPC to renderer on every fetch). Output Channel is the canonical sink; `console.error` retained for errors.
+- **Context Extraction**: `document.offsetAt()` deduped to a single call per request.
+
+### Fixed
+- **Explain Webview Security**: Replaced CDN-loaded Prism autoloader + `unsafe-inline` CSP with locally-bundled Prism + nonce-based CSP. Added `localResourceRoots` restriction to `media/prism`.
+- **Cache LRU Correctness**: `cacheSet()` now uses delete-then-set so refreshed keys move to insertion-order tail (was FIFO, not LRU as documented).
+- **Rate-Limit Race**: `applyRateFloor()` reserves the projected fire time synchronously before yielding, closing the concurrent-caller race.
+- **Panel Lifecycle**: Explain webview tracks `disposed` flag + aborts via `onDidDispose`. `retainContextWhenHidden` set to `false`.
+
+### Tests
+- **84 tests across 8 files** (up from 33/4). New: `src/statusMessages.test.ts`, `src/explain.test.ts`, `src/explainWebview.test.ts`, `src/providers/base.test.ts`.
+<!-- RELEASE:END unreleased -->
+
 <!-- RELEASE:START 1.0.0 -->
 ## [1.0.0] - 2026-05-13
 

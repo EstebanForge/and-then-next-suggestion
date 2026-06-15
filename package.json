@@ -42,6 +42,10 @@
       {
         "command": "andThenNextSuggestion.switchProvider",
         "title": "And Then Next Suggestion: Switch Provider Profile"
+      },
+      {
+        "command": "andThenNextSuggestion.explainCode",
+        "title": "And Then Next Suggestion: Explain Selected Code"
       }
     ],
     "keybindings": [
@@ -49,6 +53,12 @@
         "command": "andThenNextSuggestion.trigger",
         "key": "alt+\\",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "andThenNextSuggestion.explainCode",
+        "key": "ctrl+alt+e",
+        "mac": "cmd+alt+e",
+        "when": "editorHasSelection"
       }
     ],
     "configuration": {
@@ -166,6 +176,22 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Disable GitHub Copilot's tab autocomplete (inline suggestions) to prevent conflicts with other tab completion models. This keeps Copilot Chat and other features enabled. [Configure Copilot settings manually](command:workbench.action.openSettings?%5B%22github.copilot.inlineSuggest.enable%22%5D)"
+        },
+        "andThenNextSuggestion.debounceMs": {
+          "order": 6,
+          "type": "number",
+          "default": 200,
+          "minimum": 0,
+          "maximum": 2000,
+          "markdownDescription": "Delay (in milliseconds) after the last keystroke before a suggestion is requested. Acts as a coalescing window: typing within it resets the timer, so only the final state triggers a request. Default `200`.\n\n- **Lower** (e.g. `100`): suggestions appear sooner during brief pauses, but bursty typing fires more requests (each cancelled by the next keystroke). Risks hitting provider rate limits or extra cost on metered/per-request APIs.\n- **Higher** (e.g. `400`): fewer requests, gentler on rate-limited or metered providers. Suggestions feel less immediate during deliberate typing.\n\nIf unsure, leave at `200`. For strict per-request providers, prefer `andThenNextSuggestion.rateLimitMs`, which enforces a hard floor independent of typing speed."
+        },
+        "andThenNextSuggestion.rateLimitMs": {
+          "order": 5,
+          "type": "number",
+          "default": 0,
+          "minimum": 0,
+          "maximum": 10000,
+          "markdownDescription": "Minimum delay (in milliseconds) between any two API requests, shared across both inline completions and the Explain command. Set to `0` to disable. This is a hard rate-limit floor that complements the 300ms debounce; useful for providers with strict request limits. Example: `500` enforces at most one request every half second."
         }
       }
     }

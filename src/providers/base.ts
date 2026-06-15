@@ -3,6 +3,10 @@ import { Dialect, CompletionContext, ProviderProfile } from './types';
 const CONVERSATIONAL_PREFIXES = ['here', 'sure', 'i can', 'this is', 'here is', 'below', 'following'];
 const THINKING_RE = /<thinking>[\s\S]*?<\/thinking>/gi;
 const THINK_RE = /<think\b[\s\S]*?<\/think\b\s*>?/gi;
+// Cap the overlap scan: models never verbatim-repeat more than a few hundred
+// chars of surrounding code, so scanning the full 2000-char window is wasted
+// work (this loop is O(maxLen * overlap), invoked on every response).
+const MAX_OVERLAP = 300;
 
 export function stripThinking(content: string): string {
     return content.replace(THINKING_RE, '').replace(THINK_RE, '').trim();
@@ -20,7 +24,7 @@ export function sanitize(content: string, ctx?: CompletionContext): string | nul
     // Strip overlapping prefix: find longest suffix of textBefore that matches a prefix of content
     if (ctx?.textBefore && content.length > 0) {
         const before = ctx.textBefore;
-        const maxLen = Math.min(before.length, content.length);
+        const maxLen = Math.min(MAX_OVERLAP, before.length, content.length);
         let overlap = 0;
         for (let len = maxLen; len > 0; len--) {
             let match = true;
@@ -38,7 +42,7 @@ export function sanitize(content: string, ctx?: CompletionContext): string | nul
     // Strip overlapping suffix: find longest prefix of textAfter that matches a suffix of content
     if (ctx?.textAfter && content.length > 0) {
         const after = ctx.textAfter;
-        const maxLen = Math.min(after.length, content.length);
+        const maxLen = Math.min(MAX_OVERLAP, after.length, content.length);
         let overlap = 0;
         for (let len = maxLen; len > 0; len--) {
             let match = true;

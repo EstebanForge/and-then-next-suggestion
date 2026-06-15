@@ -6,8 +6,9 @@ And Then Next Suggestion supports multiple provider formats out of the box and a
 
 ### OpenAI (`openai`)
 Uses the Chat Completions API format.
-- **Messages**: System message defines the assistant role, User message contains `before` and `after` context.
-- **Stop Sequences**: Defaulted to `\n\n` and ` ``` ` to prevent rambling.
+- **Messages**: System message defines the assistant role (includes `languageId` + `fileExtension`); User message contains `BEFORE CURSOR` / `AFTER CURSOR` / `OUTPUT` markers.
+- **Stop Sequences**: ```` ``` ````, `<|end|>`, `\n\n\n`.
+- **Thinking/Reasoning**: Gated on `supportsThinking` (auto-detected by model name: `o1`-`o9`, `deepseek-reasoner`, `deepseek-r1`). When supported, `disableThinking` (default `true`) sends `thinking: { type: 'disabled' }`; otherwise `reasoning_effort: 'high'` + `thinking: { type: 'enabled' }` (and `temperature` is dropped).
 
 ### Anthropic (`anthropic`)
 Uses the Messages API format.
@@ -42,6 +43,14 @@ For backends like vLLM or HuggingFace TGI:
 
 ## Adding a New Native Provider
 
+Providers are implemented as `Dialect` classes under `src/providers/`, **not** by editing `fetchSuggestion`. `fetchSuggestion` is provider-agnostic: it resolves the dialect via `DialectRegistry.get(profile.apiType)` and delegates request/response handling to it.
+
 To add a new native provider (e.g., `google-vertex`):
-1. Add the enum value to `nextSuggestion.provider` in `package.json`.
-2. Update the `fetchSuggestion` function in `src/extension.ts` to handle the new provider type in the `body` construction and `data` parsing logic.
+
+1. Add the enum value to `apiType` in `src/providers/types.ts` (`ProviderProfile.apiType` union).
+2. Create `src/providers/<name>.ts` extending `BaseDialect` (which gives you `prepareRequest`, header construction, and the shared `sanitize()` response cleaner for free). Implement `prepareBody()` and `parseResponse()`. Set `readonly type`.
+3. Register it in `src/providers/registry.ts` (`DialectRegistry.register('google-vertex', new GoogleVertexDialect())`).
+4. Add `src/providers/<name>.test.ts` covering request body shape and response parsing (mirror the existing dialect tests).
+5. Update the `apiType` enum in the `package.json` `profiles` schema so the Profile Manager webview offers the new option.
+
+Because `buildExplainRequest` / `parseExplainResponse` in `src/explain.ts` carry a compile-time `never` exhaustiveness guard on `apiType`, adding the enum value will produce a TypeScript error there until you handle it, ensuring the Explain command supports the new provider too.

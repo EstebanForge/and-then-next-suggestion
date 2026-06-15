@@ -9,14 +9,18 @@
 
 ## Toolchain
 
-- **TypeScript**: Main language.
-- **tsc**: Compiler.
+- **TypeScript** (`tsc`): Main language and compiler.
 - **VS Code Extension API**: Core library.
+- **Vitest**: Unit test runner (`npm test`).
+- **@vscode/vsce**: Extension packaging (`npm run package`).
 
 ## Testing
 
-Currently, testing is manual via the Extension Development Host. 
-Future goal: Implement unit tests using `@vscode/test-electron` for mocking the editor environment.
+Unit tests use **Vitest** and cover all pure logic: dialect request/response handling, the shared `sanitize()` sanitizer (prefix/suffix overlap, thinking-block stripping, conversational-prefix rejection), status-code-to-message mapping, the explain request/response builders, and the Prism webview HTML builder (incl. XSS escaping, nonce CSP, and a packaging-integrity test that asserts every mapped Prism component file ships in `media/prism/`).
+
+- **Run tests**: `npm test` (currently 84 tests across 8 files).
+- **Test location**: tests live alongside their implementation (e.g. `src/providers/openai.test.ts`, `src/providers/base.test.ts`, `src/statusMessages.test.ts`, `src/explain.test.ts`, `src/explainWebview.test.ts`).
+- **No VS Code mocking needed**: dialects, `sanitize`, `statusMessages`, `explain`, and `buildExplainHtml` are all pure modules with zero `vscode` imports, so they test without an editor environment. The vscode-specific plumbing (webview URI resolution, secret storage, status bar) stays in `extension.ts` and is exercised manually via the Extension Development Host (`F5`).
 
 ## Security Considerations
 
@@ -30,9 +34,10 @@ Users should be warned if using public APIs with sensitive/proprietary code.
 
 ## Troubleshooting
 
-- **No suggestions appearing?** Check the "Output" panel and select "And Then Next Suggestion" (if logging is implemented) or check the Developer Tools Console (`Developer: Toggle Developer Tools`).
-- **Endpoint errors?** Verify the URL includes the full path (e.g., `/v1/chat/completions` for OpenAI).
+- **No suggestions appearing?** Open the Output panel and select "And Then Next Suggestion" to inspect timestamped request/response logs. Non-error logs write only to the Output Channel (the extension no longer crosses IPC via `console.log` on the hot path); errors additionally go to `console.error`.
+- **Endpoint errors?** Verify the URL includes the full path (e.g. `/v1/chat/completions` for OpenAI). HTTP errors surface provider-specific messages (401/402/403/404/408/422/429/5xx are mapped in `src/statusMessages.ts`).
 - **Status Bar Icons**:
     - `$(zap)`: Ready.
-    - `$(sync~spin)`: Request in flight.
+    - `$(sync~spin)`: Request in flight (skipped on cache hits, so repeated identical context never flickers).
     - `$(error)`: Last request failed.
+- **Hitting rate limits?** Raise `andThenNextSuggestion.debounceMs` or set `andThenNextSuggestion.rateLimitMs` for a hard floor between requests.

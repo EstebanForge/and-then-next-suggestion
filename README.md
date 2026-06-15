@@ -6,20 +6,27 @@ And Then Next Suggestion is a model-agnostic tab autocomplete extension for VS C
 
 - **Model Agnostic**: Use OpenAI, Anthropic, Ollama, or any custom API endpoint.
 - **Ghost Text Autocomplete**: Seamless high-quality suggestions as you type.
-- **Fully Customizable**: Control every aspect of the API request, including the JSON body.
-- **Lightweight**: Purely focused on tab autocomplete.
+- **Explain Command**: Select code and run "Explain Selected Code" (`Ctrl+Alt+E`) to get a syntax-highlighted explanation in a webview panel.
+- **Response Cache**: Identical context reuses the last suggestion within a 5-minute TTL (no redundant API calls).
+- **Rate-Limit-Friendly**: Configurable debounce and an optional hard rate-limit floor for providers with strict request limits.
+- **Fully Customizable**: Control every aspect of the API request, including the JSON body via custom templates.
+- **Profile-Based**: Multiple provider profiles with independent endpoints, models, and keys. Switch from the status bar.
+- **Secure Keys**: API keys stored via VS Code's `SecretStorage`, with environment-variable fallback.
 
 ## Configuration
 
-Go to VS Code Settings and search for `And Then Next Suggestion` to configure:
+Go to VS Code Settings and search for `And Then Next Suggestion`, or run **And Then Next Suggestion: Configure Profiles and Settings** from the Command Palette to use the Profile Manager webview.
 
-- **Endpoint**: The URL of your AI provider's completion API.
-- **API Key**: Your API key (if required). See [API Key Security](#api-key-security) below.
-- **Provider**: The name of the provider (e.g., `openai`, `opencode`). Used for environment variable lookups.
-- **API Type**: Select your provider's API format (`openai`, `anthropic`, `ollama`, or `custom`).
-- **Model**: The model name to use (e.g., `gpt-3.5-turbo`, `claude-3-haiku`, `codellama`).
+Key settings:
 
-- **Custom Body**: If using `custom` provider, you can define the exact JSON payload. Use placeholders like `{{before}}`, `{{after}}`, `{{model}}`, etc.
+- **Profiles** (`andThenNextSuggestion.profiles`): Array of provider profiles, each with `endpoint`, `apiType` (`openai` / `anthropic` / `ollama` / `custom`), `model`, and optional `apiKey` / `customBody`.
+- **Active Profile** (`andThenNextSuggestion.activeProfile`): The profile ID to use for completions.
+- **Debounce** (`andThenNextSuggestion.debounceMs`, default `200`): Delay after the last keystroke before requesting. Lower = snappier but more requests; higher = gentler on rate-limited/metered providers.
+- **Rate-Limit Floor** (`andThenNextSuggestion.rateLimitMs`, default `0` = disabled): Hard minimum between any two API requests, shared across completions and Explain.
+- **Request Timeout** (`andThenNextSuggestion.requestTimeout`, default `10`s): Kills stalled requests.
+- **Disable Copilot** (`andThenNextSuggestion.disableCopilotAutocomplete`, default `true`): Disables GitHub Copilot ghost text to avoid conflicts.
+
+See [API Key Security](#api-key-security) below for key resolution order.
 
 ## API Key Security
 
@@ -36,11 +43,19 @@ The extension resolves API keys in this order:
      - This allows multiple profiles (with unique IDs) to share the same environment variable.
 ## Usage
 
-1. Configure your endpoint and API key in settings. Select the correct **API Type**.
-2. Start typing in any file.
-3. Suggestions will appear as "ghost text".
-4. Press `Tab` to accept a suggestion.
-5. Press `Alt + \` to manually trigger a suggestion.
+1. Configure your profiles via the Profile Manager or settings. Select the correct **API Type**.
+2. Start typing in any file. Suggestions appear as "ghost text".
+3. Press `Tab` to accept a suggestion.
+4. Press `Alt + \` to manually trigger a suggestion.
+5. Select code and press `Ctrl + Alt + E` (macOS: `Cmd + Alt + E`) to explain it.
+
+## Commands
+
+- **Trigger Suggestion** (`Alt + \`): Manually request a completion.
+- **Explain Selected Code** (`Ctrl + Alt + E`): Explain the selected code in a webview panel.
+- **Switch Provider Profile**: Click the status bar or run from the Command Palette.
+- **Set API Key**: Store a key securely for a profile.
+- **Open Settings** / **Show Logs**: Quick access to settings and the Output Channel.
 
 ## Example Custom Body for a FIM (Fill-In-the-Middle) API:
 
