@@ -191,7 +191,7 @@
           "default": 0,
           "minimum": 0,
           "maximum": 10000,
-          "markdownDescription": "Minimum delay (in milliseconds) between any two API requests, shared across both inline completions and the Explain command. Set to `0` to disable. This is a hard rate-limit floor that complements the 300ms debounce; useful for providers with strict request limits. Example: `500` enforces at most one request every half second."
+          "markdownDescription": "Minimum delay (in milliseconds) between any two API requests, shared across both inline completions and the Explain command. Set to `0` to disable. This is a hard rate-limit floor that complements `andThenNextSuggestion.debounceMs`; useful for providers with strict request limits. Example: `500` enforces at most one request every half second."
         }
       }
     }
