@@ -56,7 +56,7 @@ The project uses standard VS Code extension development workflows.
 - Click the status bar to switch profiles via QuickPick.
 
 ## Testing Strategy
-- **Unit Tests**: **Vitest**. 84 tests across 8 files covering dialects, `sanitize()`, status messages, explain request/response, and the Prism webview HTML builder (incl. XSS + CSP + packaging-integrity tests).
+- **Unit Tests**: **Vitest**, covering dialects, `sanitize()`, status messages, explain request/response, cache (LRU + TTL), rate-limit math, and the Prism webview HTML builder (incl. XSS + CSP + packaging-integrity tests).
 - **Test Location**: Tests alongside implementation (e.g. `src/providers/openai.test.ts`, `src/providers/base.test.ts`).
 - **Pure Modules**: Dialects, `sanitize`, `statusMessages`, `explain`, and `buildExplainHtml` have zero `vscode` imports, testable without mocks.
 - **Run**: `npm test`.

@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { randomUUID } from 'crypto';
 import { ProviderProfile } from './providers/types';
 
 function isValidProfile(data: any): data is ProviderProfile {
@@ -176,6 +177,9 @@ export class ProfileManager {
         const bundledJs = webview.asWebviewUri(
             vscode.Uri.joinPath(this.extensionUri, 'media', 'vscode-elements-bundled.js')
         );
+        // Per-panel nonce: gates inline <script>/<style> without 'unsafe-inline',
+        // matching the explain webview's CSP posture.
+        const nonce = randomUUID();
 
         return /*html*/ `<!DOCTYPE html>
 <html lang="en">
@@ -183,10 +187,10 @@ export class ProfileManager {
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="Content-Security-Policy"
-          content="default-src 'none'; script-src ${webview.cspSource} 'unsafe-inline'; style-src ${webview.cspSource} 'unsafe-inline';">
+          content="default-src 'none'; script-src 'nonce-${nonce}' ${webview.cspSource}; style-src 'nonce-${nonce}' ${webview.cspSource};">
     <title>Manage Provider Profiles</title>
-    <script type="module" src="${bundledJs}"></script>
-    <style>
+    <script type="module" nonce="${nonce}" src="${bundledJs}"></script>
+    <style nonce="${nonce}">
         :root { --spacing: 12px; }
         body {
             padding: 0 20px 40px 20px;
@@ -309,7 +313,7 @@ export class ProfileManager {
 
     <div id="profiles-list"></div>
 
-    <script>
+    <script nonce="${nonce}">
         const vscode = acquireVsCodeApi();
         let profiles = [];
         let activeProfileId = '';

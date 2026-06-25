@@ -7,6 +7,13 @@ import { ProfileManager } from './profileManager';
 import { statusToMessage } from './statusMessages';
 import { buildExplainRequest, parseExplainResponse } from './explain';
 import { buildExplainHtml, prismLanguageId, prismComponentFiles } from './explainWebview';
+import {
+    CacheEntry,
+    buildCacheKey,
+    cacheGet,
+    cacheSet as cachePut,
+} from './cache';
+import { computeRateWait } from './rateLimit';
 
 let statusBarItem: vscode.StatusBarItem;
 let logChannel: vscode.OutputChannel;
@@ -22,35 +29,11 @@ interface DebounceEntry {
 const debounceEntries = new Map<string, DebounceEntry>();
 
 // Response cache: identical prefix + suffix + profile = instant, no API call.
-// Bounded LRU (insertion-order eviction) so memory stays predictable.
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
-const CACHE_MAX = 50;
-interface CacheEntry { result: string; timestamp: number; }
+// LRU + TTL helpers live in ./cache (pure, unit-tested); this Map is the store.
 const suggestionCache = new Map<string, CacheEntry>();
 
 function cacheSet(key: string, result: string): void {
-    // Delete-then-set so a refreshed key moves to the insertion-order tail;
-    // Map.set on an existing key keeps its original position, which would make
-    // this FIFO. We want true LRU eviction.
-    suggestionCache.delete(key);
-    suggestionCache.set(key, { result, timestamp: Date.now() });
-    while (suggestionCache.size > CACHE_MAX) {
-        const oldest = suggestionCache.keys().next().value;
-        if (oldest === undefined) { break; }
-        suggestionCache.delete(oldest);
-    }
-}
-
-function buildCacheKey(profileId: string, textBefore: string, textAfter: string): string {
-    return `${profileId}\0${textBefore}\0${textAfter}`;
-}
-
-function getCached(key: string): string | null {
-    const cached = suggestionCache.get(key);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        return cached.result;
-    }
-    return null;
+    cachePut(suggestionCache, key, result, Date.now());
 }
 
 // API key cache: avoids an OS keychain round-trip (20-150ms) on every request.
@@ -84,15 +67,9 @@ let lastApiCallTime = 0;
 async function applyRateFloor(): Promise<void> {
     const config = vscode.workspace.getConfiguration('andThenNextSuggestion');
     const rateLimitMs = config.get<number>('rateLimitMs') ?? 0;
-    const now = Date.now();
-    if (rateLimitMs <= 0) {
-        lastApiCallTime = now;
-        return;
-    }
-    const elapsed = now - lastApiCallTime;
-    const wait = Math.max(0, rateLimitMs - elapsed);
+    const { wait, reservedTime } = computeRateWait(Date.now(), lastApiCallTime, rateLimitMs);
     // Reserve the projected fire time now, before yielding, to close the race.
-    lastApiCallTime = now + wait;
+    lastApiCallTime = reservedTime;
     if (wait > 0) {
         log(`Rate-limit floor active — waiting ${wait}ms`);
         await new Promise(r => setTimeout(r, wait));
@@ -179,7 +156,7 @@ export function activate(context: vscode.ExtensionContext) {
 
             // Cache hit: return without touching the status bar (avoids zap->spin->zap flicker).
             const cacheKey = buildCacheKey(activeProfile.id, textBefore, textAfter);
-            const cached = getCached(cacheKey);
+            const cached = cacheGet(suggestionCache, cacheKey, Date.now());
             if (cached) {
                 return [new vscode.InlineCompletionItem(cached, new vscode.Range(position, position))];
             }
@@ -425,92 +402,62 @@ function updateStatusBar() {
     }
 }
 
+// Copilot settings toggled to avoid ghost-text conflicts. Each entry knows
+// how to read its "disabled" state and produce the disabled/enabled value.
+// `enable` is special-cased: it is an object keyed by language glob (`*`).
+interface CopilotToggle {
+    key: string;
+    isDisabled: (current: any) => boolean;
+    apply: (current: any, disable: boolean) => any;
+    disableMsg: string;
+    enableMsg: string;
+}
+
+const COPILOT_TOGGLES: CopilotToggle[] = [
+    {
+        key: 'enable',
+        isDisabled: (v) => v?.['*'] === false,
+        apply: (v, disable) => ({ ...(v || {}), '*': !disable }),
+        disableMsg: 'Disabled GitHub Copilot completions globally ("github.copilot.enable.* = false").',
+        enableMsg: 'Re-enabled GitHub Copilot completions globally.',
+    },
+    {
+        key: 'editor.enableAutoCompletions',
+        isDisabled: (v) => v === false,
+        apply: (_v, disable) => !disable,
+        disableMsg: 'Disabled GitHub Copilot auto completions ("github.copilot.editor.enableAutoCompletions").',
+        enableMsg: 'Re-enabled GitHub Copilot auto completions ("github.copilot.editor.enableAutoCompletions").',
+    },
+    {
+        key: 'inlineSuggest.enable',
+        isDisabled: (v) => v === false,
+        apply: (_v, disable) => !disable,
+        disableMsg: 'Disabled GitHub Copilot inline suggestions ("github.copilot.inlineSuggest.enable").',
+        enableMsg: 'Re-enabled GitHub Copilot inline suggestions ("github.copilot.inlineSuggest.enable").',
+    },
+];
+
 async function syncCopilotSettings() {
     const config = vscode.workspace.getConfiguration();
     const disableCopilot = config.get<boolean>('andThenNextSuggestion.disableCopilotAutocomplete');
     const copilotConfig = vscode.workspace.getConfiguration('github.copilot');
-    
-    const handleSyncError = (settingKey: string, err: any) => {
-        const errMsg = String(err);
-        if (!errMsg.includes('not a registered configuration')) {
-            log(`Failed to update ${settingKey}: ${err}`, true);
-        }
-    };
-
     const hasSetting = (key: string) => copilotConfig.inspect(key) !== undefined;
 
-    if (disableCopilot) {
-        // 1. Disable completions globally via enable object mapping ("Ghost text suggestions")
-        if (hasSetting('enable')) {
-            const enableConfig = copilotConfig.get<Record<string, boolean>>('enable') || {};
-            if (enableConfig['*'] !== false) {
-                try {
-                    const newEnable = { ...enableConfig, '*': false };
-                    await copilotConfig.update('enable', newEnable, vscode.ConfigurationTarget.Global);
-                    log('Disabled GitHub Copilot completions globally ("github.copilot.enable.* = false").');
-                } catch (err) {
-                    handleSyncError('github.copilot.enable', err);
-                }
-            }
-        }
+    for (const toggle of COPILOT_TOGGLES) {
+        if (!hasSetting(toggle.key)) { continue; }
+        const current = copilotConfig.get(toggle.key);
+        const alreadyDisabled = toggle.isDisabled(current);
+        const shouldToggle = disableCopilot ? !alreadyDisabled : alreadyDisabled;
+        if (!shouldToggle) { continue; }
 
-        // 2. Disable editor.enableAutoCompletions ("Auto Completions")
-        if (hasSetting('editor.enableAutoCompletions')) {
-            if (copilotConfig.get<boolean>('editor.enableAutoCompletions') !== false) {
-                try {
-                    await copilotConfig.update('editor.enableAutoCompletions', false, vscode.ConfigurationTarget.Global);
-                    log('Disabled GitHub Copilot auto completions ("github.copilot.editor.enableAutoCompletions").');
-                } catch (err) {
-                    handleSyncError('github.copilot.editor.enableAutoCompletions', err);
-                }
-            }
-        }
-
-        // 3. Disable inlineSuggest.enable ("Next edit suggestions")
-        if (hasSetting('inlineSuggest.enable')) {
-            if (copilotConfig.get<boolean>('inlineSuggest.enable') !== false) {
-                try {
-                    await copilotConfig.update('inlineSuggest.enable', false, vscode.ConfigurationTarget.Global);
-                    log('Disabled GitHub Copilot inline suggestions ("github.copilot.inlineSuggest.enable").');
-                } catch (err) {
-                    handleSyncError('github.copilot.inlineSuggest.enable', err);
-                }
-            }
-        }
-    } else {
-        // Restore settings if they toggle it off
-        if (hasSetting('enable')) {
-            const enableConfig = copilotConfig.get<Record<string, boolean>>('enable') || {};
-            if (enableConfig['*'] === false) {
-                try {
-                    const newEnable = { ...enableConfig, '*': true };
-                    await copilotConfig.update('enable', newEnable, vscode.ConfigurationTarget.Global);
-                    log('Re-enabled GitHub Copilot completions globally.');
-                } catch (err) {
-                    handleSyncError('github.copilot.enable', err);
-                }
-            }
-        }
-
-        if (hasSetting('editor.enableAutoCompletions')) {
-            if (copilotConfig.get<boolean>('editor.enableAutoCompletions') === false) {
-                try {
-                    await copilotConfig.update('editor.enableAutoCompletions', true, vscode.ConfigurationTarget.Global);
-                    log('Re-enabled GitHub Copilot auto completions ("github.copilot.editor.enableAutoCompletions").');
-                } catch (err) {
-                    handleSyncError('github.copilot.editor.enableAutoCompletions', err);
-                }
-            }
-        }
-
-        if (hasSetting('inlineSuggest.enable')) {
-            if (copilotConfig.get<boolean>('inlineSuggest.enable') === false) {
-                try {
-                    await copilotConfig.update('inlineSuggest.enable', true, vscode.ConfigurationTarget.Global);
-                    log('Re-enabled GitHub Copilot inline suggestions ("github.copilot.inlineSuggest.enable").');
-                } catch (err) {
-                    handleSyncError('github.copilot.inlineSuggest.enable', err);
-                }
+        const settingKey = `github.copilot.${toggle.key}`;
+        try {
+            await copilotConfig.update(toggle.key, toggle.apply(current, !!disableCopilot), vscode.ConfigurationTarget.Global);
+            log(disableCopilot ? toggle.disableMsg : toggle.enableMsg);
+        } catch (err) {
+            const errMsg = String(err);
+            if (!errMsg.includes('not a registered configuration')) {
+                log(`Failed to update ${settingKey}: ${err}`, true);
             }
         }
     }
@@ -536,13 +483,8 @@ async function fetchSuggestion(
         temperature: profile.temperature ?? 0.1
     };
 
-    // Cache check: identical context = reuse the last suggestion within TTL.
-    const cached = suggestionCache.get(cacheKey);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-        log('Cache hit — returning cached suggestion without API call');
-        return cached.result;
-    }
-    if (cached) { suggestionCache.delete(cacheKey); }
+    // Cache is already checked by the inline provider before calling here;
+    // no second lookup needed.
 
     const dialect = DialectRegistry.get(profile.apiType);
     log(`Fetching suggestion from ${profile.endpoint} (Model: ${profile.model}, Dialect: ${dialect.type})`);

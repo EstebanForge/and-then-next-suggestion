@@ -73,4 +73,24 @@ describe('sanitize', () => {
         const ctx = baseCtx('const a = ', ';\nconst b = 2;');
         expect(sanitize('42', ctx)).toBe('42');
     });
+
+    // Regression: short coincidental prefix seams must not be stripped.
+    // textBefore ending in 're' vs content 'return x' used to yield 'turn x'.
+    it('does not strip a short mid-word prefix overlap', () => {
+        const ctx = baseCtx('for each re');
+        expect(sanitize('return x', ctx)).toBe('return x');
+    });
+
+    it('does not strip a short mid-word suffix overlap', () => {
+        // content 'bar' ends with 'ar'; textAfter 'arrow' would overlap 'ar'
+        // mid-word — must be rejected so the completion stays intact.
+        const ctx = baseCtx('foo(', 'arrow');
+        expect(sanitize('bar', ctx)).toBe('bar');
+    });
+
+    it('still strips a short overlap that lands on a boundary', () => {
+        // 'foo(' is only 4 chars but content[4] is 'b' (word) and len == MIN_WORD_OVERLAP, accepted.
+        const ctx = baseCtx('foo(');
+        expect(sanitize('foo(bar)', ctx)).toBe('bar)');
+    });
 });

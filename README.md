@@ -24,9 +24,13 @@ Key settings:
 - **Debounce** (`andThenNextSuggestion.debounceMs`, default `200`): Delay after the last keystroke before requesting. Lower = snappier but more requests; higher = gentler on rate-limited/metered providers.
 - **Rate-Limit Floor** (`andThenNextSuggestion.rateLimitMs`, default `0` = disabled): Hard minimum between any two API requests, shared across completions and Explain.
 - **Request Timeout** (`andThenNextSuggestion.requestTimeout`, default `10`s): Kills stalled requests.
-- **Disable Copilot** (`andThenNextSuggestion.disableCopilotAutocomplete`, default `true`): Disables GitHub Copilot ghost text to avoid conflicts.
+- **Disable Copilot** (`andThenNextSuggestion.disableCopilotAutocomplete`, default `true`): Disables **only** GitHub Copilot's tab autocomplete (inline / ghost-text suggestions) to avoid conflicts with this extension. Copilot Chat and all other Copilot features keep working. When you turn this off, the previously disabled Copilot autocomplete settings are restored.
 
 See [API Key Security](#api-key-security) below for key resolution order.
+
+## Notes
+
+**Copilot interaction.** On activation (with the default `disableCopilotAutocomplete = true`), this extension turns off only GitHub Copilot's tab autocomplete — the inline / ghost-text suggestions (`github.copilot.enable.*`, `editor.enableAutoCompletions`, `inlineSuggest.enable`). Copilot Chat and every other Copilot feature are left untouched. Set `andThenNextSuggestion.disableCopilotAutocomplete` to `false` to re-enable Copilot autocomplete and let both run side by side.
 
 ## API Key Security
 

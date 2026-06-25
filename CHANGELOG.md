@@ -55,3 +55,5 @@ All notable changes to the "and-then-next-suggestion" extension will be document
 ### Tests
 - **Vitest Unit Tests**: 84 tests across 8 files covering dialect request/response handling, prefix/suffix overlap stripping, thinking block removal, FIM format detection, custom template substitution, file extension handling, status messages, explain request/response, and the Prism webview HTML builder (incl. XSS + CSP + packaging-integrity tests). Test files: `src/providers/{openai,anthropic,ollama,custom,base}.test.ts`, `src/statusMessages.test.ts`, `src/explain.test.ts`, `src/explainWebview.test.ts`.
 <!-- RELEASE:END 1.0.0 -->
+
+Stale test count ("84 tests across 8 files") removed from `AGENTS.md`; the dev-guide now describes coverage without a brittle number.
