@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- Rounded brand tile: reads on light Marketplace listing bg AND dark VS Code themes.
+       Indigo + white bolt keeps it close to VS Code's own accent family. -->
+  <rect width="256" height="256" rx="48" fill="#3734A9"/>
+  <!-- Bolt: optically weighted upward, kerned to sit centered in the tile. -->
+  <path d="M152 28 L60 156 L118 156 L96 228 L204 92 L142 92 Z"
+        fill="#FBBF24"/>
+</svg>

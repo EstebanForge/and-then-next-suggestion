@@ -3,13 +3,14 @@
   "displayName": "And Then Next Suggestion",
   "description": "Model-agnostic tab autocomplete for VS Code",
   "version": "1.0.0",
-  "publisher": "ActitudStudio",
+  "publisher": "EstebanForge",
   "author": "EstebanForge",
   "repository": {
     "type": "git",
     "url": "https://github.com/EstebanForge/and-then-next-suggestion.git"
   },
   "license": "MIT",
+  "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.80.0"
   },
