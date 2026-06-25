@@ -1,0 +1,73 @@
+# Publish to the VS Code Marketplace when a version tag is pushed.
+#
+# Trigger: push a bare numeric tag like `1.0.0`, `1.1.0`, `2.0.3`.
+#   git tag 1.0.0 && git push origin 1.0.0
+#
+# Requires the `VSCE_PAT` repository secret:
+#   Azure DevOps -> User settings -> Personal Access Tokens
+#   Organization: "All accessible organizations"
+#   Scopes:       Marketplace -> Manage (acquire)
+#   Paste the token as a GitHub Actions secret named VSCE_PAT.
+#
+# The version published is whatever is in package.json at the tagged commit.
+# Convention: set package.json version, commit, tag with the same string.
+
+name: publish
+
+on:
+  push:
+    tags:
+      # Bare semver: 1.0.0, 1.1.0, 2.0.3 (no leading 'v').
+      - '[0-9]+.[0-9]+.[0-9]+'
+      # Also accept v-prefixed (npm version default) so neither style bites you.
+      - 'v[0-9]+.[0-9]+.[0-9]+'
+
+permissions:
+  contents: write  # for the GitHub Release step (optional, drop if removed)
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Compile
+        run: npm run compile
+
+      - name: Run tests
+        run: npm test
+
+      - name: Package (.vsix)
+        run: npx @vscode/vsce package --no-git-tag-version
+
+      - name: Publish to Marketplace
+        run: npx @vscode/vsce publish -p ${{ secrets.VSCE_PAT }}
+
+      - name: Upload .vsix artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: vsix
+          path: '*.vsix'
+          if-no-files-found: error
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag="${GITHUB_REF#refs/tags/}"
+          # Strip a leading 'v' so the release title matches package.json version.
+          version="${tag#v}"
+          gh release create "$tag" *.vsix \
+            --title "$version" \
+            --notes-file CHANGELOG.md \
+            --verify-tag
