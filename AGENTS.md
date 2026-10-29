@@ -14,13 +14,15 @@ The project uses standard VS Code extension development workflows.
 - Node.js 18+ (uses native `fetch`)
 - VS Code
 
-### Commands
-- `npm install`: Install dependencies.
-- `npm run compile`: Compile TypeScript to JavaScript.
-- `npm run watch`: Compile in watch mode for development.
-- `npm test`: Run unit tests using Vitest.
+### Commands (`just` recipes)
+- `just`: List available targets.
+- `just install`: Install dependencies (`npm ci`).
+- `just check`: Run unit tests using Vitest.
+- `just compile`: Compile TypeScript to JavaScript.
+- `just watch`: Compile in watch mode for development.
+- `just package`: Package the extension into a `.vsix` file.
+- `just ci`: Run check, compile, and package locally.
 - `F5`: (In VS Code) Launch the **Extension Development Host** to test and debug.
-- `npm run package`: Package the extension into a `.vsix` file.
 
 ## Development Conventions
 

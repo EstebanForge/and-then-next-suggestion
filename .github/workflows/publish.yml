@@ -14,13 +14,9 @@
 
 name: publish
 
+# Manual publish only via workflow_dispatch
 on:
-  push:
-    tags:
-      # Bare semver: 1.0.0, 1.1.0, 2.0.3 (no leading 'v').
-      - '[0-9]+.[0-9]+.[0-9]+'
-      # Also accept v-prefixed (npm version default) so neither style bites you.
-      - 'v[0-9]+.[0-9]+.[0-9]+'
+  workflow_dispatch:
 
 permissions:
   contents: write  # for the GitHub Release step (optional, drop if removed)
